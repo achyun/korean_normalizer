@@ -442,6 +442,6 @@ if __name__ == "__main__":
     test_normalize("33333133331131110")
     test_normalize("2월 1일 00시")
     test_normalize("0")
-    test_normalize("0시")
+
 
     #print(list(hangul_to_jamo(list(hangul_to_jamo('남은 시간이 "6개월이래요”')))))
