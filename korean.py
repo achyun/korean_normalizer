@@ -1,5 +1,5 @@
 ﻿# coding: utf-8
-# v2 : 기수,서수 버그 수정,    일월 처리 수정
+# v2 : 기수,서수 버그 수정, 일월 처리 수정
 # v2.1 : v2 + 슬래시
 
 import re
@@ -8,7 +8,7 @@ import ast
 import json
 from jamo import hangul_to_jamo, h2j, j2h
 
-from .ko_dictionary import english_dictionary, etc_dictionary
+from ko_dictionary import english_dictionary, etc_dictionary
 import pdb
 
 PAD = '_'
@@ -30,10 +30,13 @@ id_to_char = {i: c for i, c in enumerate(ALL_SYMBOLS)}
 
 quote_checker = """([`"'＂“‘])(.+?)([`"'＂”’])"""
 number_checker = "([+-]?\d[\d,]*)[\.]?\d* *"
-count_checker = "(시|명|가지|살|마리|포기|송이|수|톨|통|개|벌|척|채|다발|그루|자루|줄|켤레|그릇|잔|마디|상자|사람|곡|병|판)"
 
-#count_to_kor1 = [""] + ["하나","둘","셋","넷","다섯","여섯","일곱","여덟","아홉"]
-count_to_kor1 = [""] + ["한","두","세","네","다섯","여섯","일곱","여덟","아홉"]
+# 기수 단위를 포함하고 있어 서수임에도 기수처럼 읽는 것을 방지하기 위해
+exception_checker = "(개월)"
+
+# cardinal = 기수 = 세는 수 
+cardinal_checker = "(시|명|가지|살|마리|포기|송이|수|톨|통|개|벌|척|채|다발|그루|자루|줄|켤레|그릇|잔|마디|상자|사람|곡|병|판)"
+cardinal_to_kor1 = [""] + ["한","두","세","네","다섯","여섯","일곱","여덟","아홉"]
 
 num_to_kor = {
         '0': '영',
@@ -94,7 +97,7 @@ upper_to_kor = {
         'Z': '지',
 }
 
-count_tenth_dict = {
+cardinal_tenth_dict = {
         "십": "열",
         "두십": "스물",
         "세십": "서른",
@@ -103,41 +106,7 @@ count_tenth_dict = {
         "여섯십": "예순",
         "일곱십": "일흔",
         "여덟십": "여든",
-        "아홉십": "아흔",
-        "두백":"이백",
-        "세백":"삼백",
-        "네백":"사백",
-        "다섯백":"오백",
-        "여섯백":"육백",
-        "일곱백":"칠백",
-        "여덟백":"팔백",
-        "아홉백":"구백",
-        "두천":"이천",
-        "세천":"삼천",
-        "네천":"사천",
-        "다섯천":"오천",
-        "여섯천":"육천",
-        "일곱천":"칠천",
-        "여덟천":"팔천",
-        "아홉천":"구천",
-        "두만":"이만",
-        "세만":"삼만",
-        "네만":"사만",
-        "다섯만":"오만",
-        "여섯만":"육만",
-        "일곱만":"칠만",
-        "여덟만":"팔만",
-        "아홉만":"구만",
-        "두억":"이억",
-        "세억":"삼억",
-        "네억":"사억",
-        "다섯억":"오억",
-        "여섯억":"육억",
-        "일곱억":"칠억",
-        "여덟억":"팔억",
-        "아홉억":"구억",
-        "두십억":"이십억"
-
+        "아홉십": "아흔"
 }
 
 def is_lead(char):
@@ -215,12 +184,11 @@ def normalize(text):
     # 공백과 \n 삭제
     text = text.strip()
 
-    # 괄호 안에 있는 \d일 삭제 ex. '(20일)' -> ''
+    # 괄호 안에 있는 \d일 삭제
+    # ex. '오늘(20일)' -> '오늘'
     text = re.sub('\(\d+일\)', '', text)
-    # 무슨 역할인지...
-    text = re.sub('\([⺀-⺙⺛-⻳⼀-⿕々〇〡-〩〸-〺〻㐀-䶵一-鿃豈-鶴侮-頻並-龎]+\)', '', text)
 
-    #20200514 슬래시 추가
+    # 20200514 슬래시 추가
     text = normalize_slash(text)
     # 딕셔너리 변환 ko_dictionary.py -> etc_dictionary
     text = normalize_with_dictionary(text, etc_dictionary)
@@ -234,8 +202,6 @@ def normalize(text):
     text = normalize_number(text)
 
     return text
-
-fraction_checker = "(\d)/(\d)"
 
 #20200514 슬래시 추가
 def normalize_slash(text):
@@ -288,36 +254,33 @@ def normalize_number(text):
     # 단위 변환
     text = normalize_with_dictionary(text, unit_to_kor1)
     text = normalize_with_dictionary(text, unit_to_kor2)
-    
-    # 개월 변환
-    text = re.sub("([+-]?\d[\d,]*)[\.]?\d* *개월",lambda x: number_to_korean(x, False), text)
-    # print('re first ',text)
 
-    #서수
-    text = re.sub(number_checker + count_checker,
+    # 기수 단위의 글자를 포함하고 있어 서수임에도 기수처럼 읽히는 예외 단위 처리 
+    # ex.) 개월
+    text = re.sub(number_checker + exception_checker,
+            lambda x: number_to_korean(x, False, True), text)
+
+    # 기수
+    text = re.sub(number_checker + cardinal_checker,
             lambda x: number_to_korean(x, True), text)
 
-    #기수
+    # 서수
     text = re.sub(number_checker,
             lambda x: number_to_korean(x, False), text)
     return text
 
-def number_to_korean(num_str, is_count=False):
-    #기수/서수
-    if is_count:
+def number_to_korean(num_str, is_cardinal=False, is_exception=False):
+    # 숫자와 단위 분리
+    if is_cardinal:
         num_str, unit_str = num_str.group(1), num_str.group(2)
     else:
-        num_str, unit_str = num_str.group(), ""
-    #개월
-    if '개월' in num_str:
-        num_str = num_str.replace('개월','')
-        unit_str = '개월'
+        if is_exception :
+            num_str, unit_str = num_str.group(1), num_str.group(2)
+        else :
+            num_str, unit_str = num_str.group(), ""
+
     #쉼표 제거 -> 100,000같은거
     num_str = num_str.replace(',', '')
-    # num = ast.literal_eval(num_str)
-
-    #if num == 0:
-    #    kor = "영"
 
     #소수점 분리
     check_float = num_str.split('.')
@@ -328,40 +291,41 @@ def number_to_korean(num_str, is_count=False):
     else:
         digit_str, float_str = check_float[0], None
 
-    if is_count and float_str is not None:
-        raise Exception(" [!] `is_count` and float number does not fit each other")
+    if is_cardinal and float_str is not None:
+        raise Exception(" [!] `is_cardinal` and float number does not fit each other")
 
     digit = int(digit_str)
 
     if digit_str.startswith("-"):
         digit, digit_str = abs(digit), str(abs(digit))
 
-    #자릿수별로 변환
+    # 자릿수별로 숫자를 한글로 변환
     kor = ""
     kor_under_10000 = ""
     size = len(str(digit))
     tmp = []
     digit_str = digit_str.strip()
     zero_count = 0
-    #print('digit : {}'.format(digit))
-    #rint('digit_str : {}'.format(digit_str))
     for i, v in enumerate(digit_str, start=1):
         v = int(v)
-
         if v != 0:
-            #일천일백일십 방지
+            # 숫자
+            # 1110 -> 일천일백일십 처럼 읽으면 안되므로 v가 1일 땐 숫자는 버린다.
+            # 하지만 1210000 -> 백이십일만 처럼 만억조경해 단위에서는 '일'도 표시해 줘야 한다.
             if v != 1 or (size - i) % 4 == 0 :
-                if is_count and (size - i) < 4:
-                    tmp += count_to_kor1[v]
-                elif is_count and (size - i) >= 4: #수가 커지면 서른삼만천백열한개 이런식으로 돼서 분기
+                if is_cardinal and (size - i) < 2:
+                    # 기수(세는 수)이고 자리수가 100의 자리 미만일 때
+                    # 3,333개와 같은 기수도 100의 자리 이상은 삼만삼천삼백 과 같이 서수처럼 읽고, 서른 세 개와 같이 100의 자리 미만은 기수로 읽는다.
+                    tmp += cardinal_to_kor1[v]
+                elif is_cardinal and (size - i) >= 2:
+                    # 기수(세는 수)이고 자리수가 100의 자리 이상일 때
                     tmp += num_to_kor1[v]
                 else:
+                    # 서수일 때
                     tmp += num_to_kor1[v]
 
+            # 단위(십, 백, 천)
             tmp += num_to_kor3[(size - i) % 4]
-            #print('i : {}'.format(i))
-            #print('v : {}'.format(v))
-            #print('tmp : {}'.format(tmp))
         else :
             #v = 0일 때.
             #이월 일일 영시 같은 케이스 커버
@@ -378,9 +342,8 @@ def number_to_korean(num_str, is_count=False):
                         tmp += "영"
                     zero_count = 0    
 
-
         if (size - i) % 4 == 0 and len(tmp) != 0:
-             
+            # 4 자리마다 만, 억, 조, 경, 해 붙이기
             if (size-i) < 4 : # 10,000 이전 숫자와 10,000 이후 숫자를 분기
                 kor_under_10000 += "".join(tmp)
                 tmp = []
@@ -389,30 +352,22 @@ def number_to_korean(num_str, is_count=False):
                 kor += "".join(tmp)
                 tmp = []
                 kor += num_to_kor2[int((size - i) / 4)]
-            #print('kor : {}{}'.format(kor,kor_under_10000))
 
-    if is_count:
-        if kor.startswith("한") and len(kor) > 1:
-            kor = kor[1:]
-        # 10000 이전 숫자도 동일로직
-        if kor_under_10000.startswith("한") and len(kor_under_10000) > 1:
-            kor_under_10000 = kor_under_10000[1:]
-
-        # 열 스물 서른 > 10,000 이전까지만 적용
-        if any(word in kor_under_10000 for word in count_tenth_dict):
+    if is_cardinal :
+        # 두십 -> 스물과 같이 10의자리에 있는 기수 변경해준다.
+        if any(word in kor_under_10000 for word in cardinal_tenth_dict):
             kor_under_10000 = re.sub(
-                    '|'.join(count_tenth_dict.keys()),
-                    lambda x: count_tenth_dict[x.group()], kor_under_10000)
-        # 더해준다!
-    kor = kor + kor_under_10000
+                    '|'.join(cardinal_tenth_dict.keys()),
+                    lambda x: cardinal_tenth_dict[x.group()], kor_under_10000)
+    
+    kor += kor_under_10000
 
-    if not is_count and kor.startswith("일") and len(kor) > 1:
-        kor = kor[1:]
-
+    # 소수점 이하 자리가 있을 때
     if float_str is not None:
         kor += "쩜 "
         kor += re.sub('\d', lambda x: num_to_kor[x.group()], float_str)
 
+    # 숫자가 +또는 -로 시작하는 경우
     if num_str.startswith("+"):
         kor = "플러스 " + kor
     elif num_str.startswith("-"):
@@ -428,7 +383,7 @@ if __name__ == "__main__":
         print("="*30)
     test_normalize("제 전화번호는 01012345678이에요.")
     test_normalize("60 대 30으로")
-    test_normalize("2020년 월드컵에서는 한국74이 4강")
+    test_normalize("2020년 월드컵에서는 한국이 4강")
     test_normalize("3개월 전에 골프를 치다가")
     test_normalize("1025호실 환자")
     test_normalize("2013년에는 작은 아파트에 대한")
@@ -450,15 +405,13 @@ if __name__ == "__main__":
     test_normalize('3명 입니다')
     test_normalize("mp3 파일을 홈페이지에서 다운로드 받으시기 바랍니다.")
     test_normalize("오늘(13일) 3,600마리 강아지가")
-    test_normalize("33001명의 사람이 모였습니다")
     test_normalize("60.3%")
-    test_normalize("3333313333113111개")
-    test_normalize("3333313333113111")
-    test_normalize("33333133331131110")
     test_normalize("2월 1일 00시")
     test_normalize("0")
-    test_normalize("123405123개")
+    test_normalize("123,455,123개")
     test_normalize("더블 슬래시 테스트 : // ")
     test_normalize("슬래시 테스트 : 1/2, 테/스/트, 3234/1234.")
+    test_normalize("AS")
+    test_normalize("33,333개")
 
     #print(list(hangul_to_jamo(list(hangul_to_jamo('남은 시간이 "6개월이래요”')))))
