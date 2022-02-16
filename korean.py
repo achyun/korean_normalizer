@@ -31,7 +31,8 @@ id_to_char = {i: c for i, c in enumerate(ALL_SYMBOLS)}
 quote_checker = """([`"'＂“‘])(.+?)([`"'＂”’])"""
 number_checker = "([+-]?\d[\d,]*)[\.]?\d* *"
 
-# 기수 단위를 포함하고 있어 서수임에도 기수처럼 읽는 것을 방지하기 위해
+# 기수 단위의 글자를 포함하고 있어 서수임에도 기수처럼 읽는 것을 방지하기 위해
+# 오류난 exception 아님
 exception_checker = "(개월)"
 
 # cardinal = 기수 = 세는 수 
