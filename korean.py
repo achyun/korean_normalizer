@@ -28,17 +28,24 @@ ALL_SYMBOLS = PAD + EOS + VALID_CHARS
 char_to_id = {c: i for i, c in enumerate(ALL_SYMBOLS)}
 id_to_char = {i: c for i, c in enumerate(ALL_SYMBOLS)}
 
+## -------------------------------------------------------------------------
+## CHECKER 
+## -------------------------------------------------------------------------
 quote_checker = """([`"'＂“‘])(.+?)([`"'＂”’])"""
 number_checker = "([+-]?\d[\d,]*)[\.]?\d* *"
-
 # 기수 단위의 글자를 포함하고 있어 서수임에도 기수처럼 읽는 것을 방지하기 위해
 # 오류난 exception 아님
 exception_checker = "(개월)"
-
 # cardinal = 기수 = 세는 수 
 cardinal_checker = "(시|명|가지|살|마리|포기|송이|수|톨|통|개|벌|척|채|다발|그루|자루|줄|켤레|그릇|잔|마디|상자|사람|곡|병|판)"
-cardinal_to_kor1 = [""] + ["한","두","세","네","다섯","여섯","일곱","여덟","아홉"]
+dash_checker = number_checker + "-" + number_checker
+phone_cheker = "\d{2,3}-\d{3,4}-\d{4}"
+## -------------------------------------------------------------------------
 
+## -------------------------------------------------------------------------
+## DICTIONARY
+## -------------------------------------------------------------------------
+cardinal_to_kor1 = [""] + ["한","두","세","네","다섯","여섯","일곱","여덟","아홉"]
 num_to_kor = {
         '0': '영',
         '1': '일',
@@ -51,24 +58,21 @@ num_to_kor = {
         '8': '팔',
         '9': '구',
 }
-
 num_to_kor1 = [""] + list("일이삼사오육칠팔구")
 num_to_kor2 = [""] + list("만억조경해")
 num_to_kor3 = [""] + list("십백천")
-
 unit_to_kor1 = {
-        #단위이므로 하나 띄어준다~
         '%': "퍼센트",
         'cm': "센치미터",
         'mm': "밀리미터",
         'km': "킬로미터",
         'kg': "킬로그램",
-        # 'g':  '그램'  # num+g 으로 만들어야됨
+        'mg': "밀리그램"
 }
 unit_to_kor2 = {
         'm': "미터",
+        'g': "그램"
 }
-
 upper_to_kor = {
         'A': '에이',
         'B': '비',
@@ -97,7 +101,6 @@ upper_to_kor = {
         'Y': '와이',
         'Z': '지',
 }
-
 cardinal_tenth_dict = {
         "십": "열",
         "두십": "스물",
@@ -109,6 +112,7 @@ cardinal_tenth_dict = {
         "여덟십": "여든",
         "아홉십": "아흔"
 }
+## -------------------------------------------------------------------------
 
 def is_lead(char):
     return char in JAMO_LEADS
@@ -256,6 +260,12 @@ def normalize_number(text):
     text = normalize_with_dictionary(text, unit_to_kor1)
     text = normalize_with_dictionary(text, unit_to_kor2)
 
+    # 전화번호 변환
+    text = re.sub(phone_cheker, lambda x : phone_to_korean(x), text)
+
+    # 숫자-숫자 -> 숫자 다시 숫자
+    text = re.sub(dash_checker, lambda x : dash_to_korean(x), text)
+
     # 기수 단위의 글자를 포함하고 있어 서수임에도 기수처럼 읽히는 예외 단위 처리 
     # ex.) 개월
     text = re.sub(number_checker + exception_checker,
@@ -269,6 +279,18 @@ def normalize_number(text):
     text = re.sub(number_checker,
             lambda x: number_to_korean(x, False), text)
     return text
+
+def dash_to_korean(num_str):
+    return num_str.group().replace('-',' 다시 ')
+
+def phone_to_korean(num_str):
+    kor = ""
+    num_str = num_str.group().replace('-',' ')
+    print(num_str)
+    kor += re.sub('\d', lambda x: num_to_kor[x.group()], num_str)
+
+    return kor
+
 
 def number_to_korean(num_str, is_cardinal=False, is_exception=False):
     # 숫자와 단위 분리
@@ -328,7 +350,7 @@ def number_to_korean(num_str, is_cardinal=False, is_exception=False):
             # 단위(십, 백, 천)
             tmp += num_to_kor3[(size - i) % 4]
         else :
-            #v = 0일 때.
+            #v = 0일 때. -> 개선 필요
             #이월 일일 영시 같은 케이스 커버
             if len(digit_str) == 1 : 
                 tmp += "영"
@@ -382,7 +404,6 @@ if __name__ == "__main__":
         print(text)
         print(normalize(text))
         print("="*30)
-    test_normalize("제 전화번호는 01012345678이에요.")
     test_normalize("60 대 30으로")
     test_normalize("2020년 월드컵에서는 한국이 4강")
     test_normalize("3개월 전에 골프를 치다가")
@@ -392,7 +413,6 @@ if __name__ == "__main__":
     test_normalize('근처에 24시간 여는 슈퍼마켓 있나요?')
     test_normalize('지금은 23시10분 입니다')
     test_normalize('아버지는 20살 때부터 버스를 모셨다.')
-    #test_normalize("""아버지는 '20살' 때부터 버스를 모셨다.""")
     test_normalize("이 상자는 가로 30, 세로 50, 높이 20센티다.")
     test_normalize("3, 6, 9 게임 아세요?")
     test_normalize("남은 시간이 6개월이래요")
@@ -408,11 +428,17 @@ if __name__ == "__main__":
     test_normalize("오늘(13일) 3,600마리 강아지가")
     test_normalize("60.3%")
     test_normalize("2월 1일 00시")
-    test_normalize("0")
     test_normalize("123,455,123개")
     test_normalize("더블 슬래시 테스트 : // ")
     test_normalize("슬래시 테스트 : 1/2, 테/스/트, 3234/1234.")
     test_normalize("AS")
     test_normalize("33,333개")
-
+    test_normalize("0")
+    test_normalize("00")
+    test_normalize("000")
+    test_normalize("03")
+    test_normalize("세종특별자치시 한누리대로 1843-10")
+    test_normalize("제 전화번호는 010-1234-5678이에요.")
+    test_normalize("13시")
+    
     #print(list(hangul_to_jamo(list(hangul_to_jamo('남은 시간이 "6개월이래요”')))))
