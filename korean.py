@@ -32,6 +32,7 @@ id_to_char = {i: c for i, c in enumerate(ALL_SYMBOLS)}
 ## CHECKER 
 ## -------------------------------------------------------------------------
 quote_checker = """([`"'＂“‘])(.+?)([`"'＂”’])"""
+# number_checker = "([+-]?\d[\d,]*)[\.]?\d* *"
 number_checker = "([+-]?\d[\d,]*)[\.]?\d* *"
 # 기수 단위의 글자를 포함하고 있어 서수임에도 기수처럼 읽는 것을 방지하기 위해
 # 오류난 exception 아님
@@ -286,13 +287,13 @@ def dash_to_korean(num_str):
 def phone_to_korean(num_str):
     kor = ""
     num_str = num_str.group().replace('-',' ')
-    print(num_str)
     kor += re.sub('\d', lambda x: num_to_kor[x.group()], num_str)
 
     return kor
 
 
 def number_to_korean(num_str, is_cardinal=False, is_exception=False):
+    post_space = 0
     # 숫자와 단위 분리
     if is_cardinal:
         num_str, unit_str = num_str.group(1), num_str.group(2)
@@ -301,8 +302,14 @@ def number_to_korean(num_str, is_cardinal=False, is_exception=False):
             num_str, unit_str = num_str.group(1), num_str.group(2)
         else :
             num_str, unit_str = num_str.group(), ""
+    
+    for i in reversed(range(len(num_str))) :
+        if num_str[i] == ' ' :
+            post_space += 1
+        else :
+            break
 
-    #쉼표 제거 -> 100,000같은거
+    #쉼표 제거 -> 100,000같은거 
     num_str = num_str.replace(',', '')
 
     #소수점 분리
@@ -395,8 +402,12 @@ def number_to_korean(num_str, is_cardinal=False, is_exception=False):
         kor = "플러스 " + kor
     elif num_str.startswith("-"):
         kor = "마이너스 " + kor
+    
+    space = ''
+    for i in range(post_space):
+        space += ' '
 
-    return kor + unit_str
+    return kor + space + unit_str
 
 if __name__ == "__main__":
     def test_normalize(text):
@@ -438,7 +449,8 @@ if __name__ == "__main__":
     test_normalize("000")
     test_normalize("03")
     test_normalize("세종특별자치시 한누리대로 1843-10")
-    test_normalize("제 전화번호는 010-1234-5678이에요.")
-    test_normalize("13시")
+    test_normalize("제 전화번호는 010-1234-5678 이에요.")
+    test_normalize("세종특별자치시 시청대로 336 한국조세재정연구원")
+    test_normalize("F1")
     
     #print(list(hangul_to_jamo(list(hangul_to_jamo('남은 시간이 "6개월이래요”')))))
