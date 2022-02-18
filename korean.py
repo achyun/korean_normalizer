@@ -47,6 +47,13 @@ phone_cheker = "\d{2,3}-\d{3,4}-\d{4}"
 ## DICTIONARY
 ## -------------------------------------------------------------------------
 cardinal_to_kor1 = [""] + ["한","두","세","네","다섯","여섯","일곱","여덟","아홉"]
+=======
+number_checker = "([+-]?\d[\d,]*)[\.]?\d* *"
+count_checker = "(시|명|가지|살|마리|포기|송이|수|톨|통|개|벌|척|채|다발|그루|자루|줄|켤레|그릇|잔|마디|상자|사람|곡|병|판)"
+
+#count_to_kor1 = [""] + ["하나","둘","셋","넷","다섯","여섯","일곱","여덟","아홉"]
+count_to_kor1 = [""] + ["한","두","세","네","다섯","여섯","일곱","여덟","아홉"]
+
 num_to_kor = {
         '0': '영',
         '1': '일',
@@ -62,7 +69,9 @@ num_to_kor = {
 num_to_kor1 = [""] + list("일이삼사오육칠팔구")
 num_to_kor2 = [""] + list("만억조경해")
 num_to_kor3 = [""] + list("십백천")
+
 unit_to_kor1 = {
+        #단위이므로 하나 띄어준다~
         '%': "퍼센트",
         'cm': "센치미터",
         'mm': "밀리미터",
@@ -113,7 +122,6 @@ cardinal_tenth_dict = {
         "여덟십": "여든",
         "아홉십": "아흔"
 }
-## -------------------------------------------------------------------------
 
 def is_lead(char):
     return char in JAMO_LEADS
@@ -277,9 +285,11 @@ def normalize_number(text):
             lambda x: number_to_korean(x, True), text)
 
     # 서수
+
     text = re.sub(number_checker,
             lambda x: number_to_korean(x, False), text)
     return text
+
 
 def dash_to_korean(num_str):
     return num_str.group().replace('-',' 다시 ')
@@ -312,6 +322,7 @@ def number_to_korean(num_str, is_cardinal=False, is_exception=False):
     #쉼표 제거 -> 100,000같은거 
     num_str = num_str.replace(',', '')
 
+
     #소수점 분리
     check_float = num_str.split('.')
     if len(check_float) == 2:
@@ -328,6 +339,7 @@ def number_to_korean(num_str, is_cardinal=False, is_exception=False):
 
     if digit_str.startswith("-"):
         digit, digit_str = abs(digit), str(abs(digit))
+
 
     # 자릿수별로 숫자를 한글로 변환
     kor = ""
@@ -358,6 +370,7 @@ def number_to_korean(num_str, is_cardinal=False, is_exception=False):
             tmp += num_to_kor3[(size - i) % 4]
         else :
             #v = 0일 때. -> 개선 필요
+
             #이월 일일 영시 같은 케이스 커버
             if len(digit_str) == 1 : 
                 tmp += "영"
@@ -374,6 +387,7 @@ def number_to_korean(num_str, is_cardinal=False, is_exception=False):
 
         if (size - i) % 4 == 0 and len(tmp) != 0:
             # 4 자리마다 만, 억, 조, 경, 해 붙이기
+
             if (size-i) < 4 : # 10,000 이전 숫자와 10,000 이후 숫자를 분기
                 kor_under_10000 += "".join(tmp)
                 tmp = []
@@ -382,7 +396,6 @@ def number_to_korean(num_str, is_cardinal=False, is_exception=False):
                 kor += "".join(tmp)
                 tmp = []
                 kor += num_to_kor2[int((size - i) / 4)]
-
     if is_cardinal :
         # 두십 -> 스물과 같이 10의자리에 있는 기수 변경해준다.
         if any(word in kor_under_10000 for word in cardinal_tenth_dict):
@@ -452,5 +465,4 @@ if __name__ == "__main__":
     test_normalize("제 전화번호는 010-1234-5678 이에요.")
     test_normalize("세종특별자치시 시청대로 336 한국조세재정연구원")
     test_normalize("F1")
-    
     #print(list(hangul_to_jamo(list(hangul_to_jamo('남은 시간이 "6개월이래요”')))))
