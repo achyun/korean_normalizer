@@ -32,6 +32,7 @@ id_to_char = {i: c for i, c in enumerate(ALL_SYMBOLS)}
 ## CHECKER 
 ## -------------------------------------------------------------------------
 quote_checker = """([`"'＂“‘])(.+?)([`"'＂”’])"""
+# number_checker = "([+-]?\d[\d,]*)[\.]?\d* *"
 number_checker = "([+-]?\d[\d,]*)[\.]?\d* *"
 # 기수 단위의 글자를 포함하고 있어 서수임에도 기수처럼 읽는 것을 방지하기 위해
 # 오류난 exception 아님
@@ -286,13 +287,13 @@ def dash_to_korean(num_str):
 def phone_to_korean(num_str):
     kor = ""
     num_str = num_str.group().replace('-',' ')
-    print(num_str)
     kor += re.sub('\d', lambda x: num_to_kor[x.group()], num_str)
 
     return kor
 
 
 def number_to_korean(num_str, is_cardinal=False, is_exception=False):
+    post_space = 0
     # 숫자와 단위 분리
     if is_cardinal:
         num_str, unit_str = num_str.group(1), num_str.group(2)
@@ -301,8 +302,14 @@ def number_to_korean(num_str, is_cardinal=False, is_exception=False):
             num_str, unit_str = num_str.group(1), num_str.group(2)
         else :
             num_str, unit_str = num_str.group(), ""
+    
+    for i in reversed(range(len(num_str))) :
+        if num_str[i] == ' ' :
+            post_space += 1
+        else :
+            break
 
-    #쉼표 제거 -> 100,000같은거
+    #쉼표 제거 -> 100,000같은거 
     num_str = num_str.replace(',', '')
 
     #소수점 분리
@@ -353,7 +360,7 @@ def number_to_korean(num_str, is_cardinal=False, is_exception=False):
             #v = 0일 때. -> 개선 필요
             #이월 일일 영시 같은 케이스 커버
             if len(digit_str) == 1 : 
-                tmp += "영"
+                tmp += "공"
             else :
                 #00시 로직. 
                 #i가 len(digit_str) 보다 작을 때 -> 처음 나오는 0이 아닐 때
@@ -362,7 +369,7 @@ def number_to_korean(num_str, is_cardinal=False, is_exception=False):
                 elif i == len(digit_str) and zero_count == len(digit_str)-1 : # i가 len(digit_str)이랑 같고(마지막 0일 때), 이전 숫자가 0일 때
                     zero_count += 1
                     for i in range(zero_count) :
-                        tmp += "영"
+                        tmp += "공"
                     zero_count = 0    
 
         if (size - i) % 4 == 0 and len(tmp) != 0:
@@ -375,6 +382,10 @@ def number_to_korean(num_str, is_cardinal=False, is_exception=False):
                 kor += "".join(tmp)
                 tmp = []
                 kor += num_to_kor2[int((size - i) / 4)]
+        
+        if size == 5 and i == 1 :
+            # 일만으로 시작하는 현상 fix
+            kor = kor.replace('일', '')
 
     if is_cardinal :
         # 두십 -> 스물과 같이 10의자리에 있는 기수 변경해준다.
@@ -395,8 +406,12 @@ def number_to_korean(num_str, is_cardinal=False, is_exception=False):
         kor = "플러스 " + kor
     elif num_str.startswith("-"):
         kor = "마이너스 " + kor
+    
+    space = ''
+    for i in range(post_space):
+        space += ' '
 
-    return kor + unit_str
+    return kor + space + unit_str
 
 if __name__ == "__main__":
     def test_normalize(text):
