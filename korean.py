@@ -47,7 +47,6 @@ phone_cheker = "\d{2,3}-\d{3,4}-\d{4}"
 ## DICTIONARY
 ## -------------------------------------------------------------------------
 cardinal_to_kor1 = [""] + ["한","두","세","네","다섯","여섯","일곱","여덟","아홉"]
-=======
 number_checker = "([+-]?\d[\d,]*)[\.]?\d* *"
 count_checker = "(시|명|가지|살|마리|포기|송이|수|톨|통|개|벌|척|채|다발|그루|자루|줄|켤레|그릇|잔|마디|상자|사람|곡|병|판)"
 
@@ -373,7 +372,7 @@ def number_to_korean(num_str, is_cardinal=False, is_exception=False):
 
             #이월 일일 영시 같은 케이스 커버
             if len(digit_str) == 1 : 
-                tmp += "영"
+                tmp += "공"
             else :
                 #00시 로직. 
                 #i가 len(digit_str) 보다 작을 때 -> 처음 나오는 0이 아닐 때
@@ -382,7 +381,7 @@ def number_to_korean(num_str, is_cardinal=False, is_exception=False):
                 elif i == len(digit_str) and zero_count == len(digit_str)-1 : # i가 len(digit_str)이랑 같고(마지막 0일 때), 이전 숫자가 0일 때
                     zero_count += 1
                     for i in range(zero_count) :
-                        tmp += "영"
+                        tmp += "공"
                     zero_count = 0    
 
         if (size - i) % 4 == 0 and len(tmp) != 0:
@@ -396,6 +395,11 @@ def number_to_korean(num_str, is_cardinal=False, is_exception=False):
                 kor += "".join(tmp)
                 tmp = []
                 kor += num_to_kor2[int((size - i) / 4)]
+                
+        if size == 5 and i == 1 :
+            # 일만으로 시작하는 현상 fix
+            kor = kor.replace('일', '')
+            
     if is_cardinal :
         # 두십 -> 스물과 같이 10의자리에 있는 기수 변경해준다.
         if any(word in kor_under_10000 for word in cardinal_tenth_dict):
