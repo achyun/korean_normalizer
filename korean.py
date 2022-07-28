@@ -246,13 +246,9 @@ def normalize_upper(text):
 
 def normalize_quote(text):
     def fn(found_text):
-        from nltk import sent_tokenize # NLTK doesn't along with multiprocessing
-
         found_text = found_text.group()
         unquoted_text = found_text[1:-1]
-
-        sentences = sent_tokenize(unquoted_text)
-        return " ".join(["'{}'".format(sent) for sent in sentences])
+        return unquoted_text
 
     return re.sub(quote_checker, fn, text)
 
