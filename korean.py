@@ -1,6 +1,7 @@
 ﻿# coding: utf-8
 # v2 : 기수,서수 버그 수정, 일월 처리 수정
 # v2.1 : v2 + 슬래시
+# 20220804 기수 단위에 자리, 건 추가
 
 import re
 import os
@@ -38,9 +39,9 @@ number_checker = "([+-]?\d[\d,]*)[\.]?\d* *"
 # 오류난 exception 아님
 exception_checker = "(개월)"
 # cardinal = 기수 = 세는 수 
-cardinal_checker = "(시|명|가지|살|마리|포기|송이|수|톨|통|개|벌|척|채|다발|그루|자루|줄|켤레|그릇|잔|마디|상자|사람|곡|병|판)"
+cardinal_checker = "(시|명|가지|살|마리|포기|송이|수|톨|통|개|벌|척|채|다발|그루|자루|줄|켤레|그릇|잔|마디|상자|사람|곡|병|판|자리|건)"
 dash_checker = number_checker + "-" + number_checker
-phone_cheker = "\d{2,3}-\d{3,4}-\d{4}"
+phone_checker = "\d{3,4}-\d{4}"
 ## -------------------------------------------------------------------------
 
 ## -------------------------------------------------------------------------
@@ -258,7 +259,7 @@ def normalize_number(text):
     text = normalize_with_dictionary(text, unit_to_kor2)
 
     # 전화번호 변환
-    text = re.sub(phone_cheker, lambda x : phone_to_korean(x), text)
+    text = re.sub(phone_checker, lambda x : phone_to_korean(x), text)
 
     # 숫자-숫자 -> 숫자 다시 숫자
     text = re.sub(dash_checker, lambda x : dash_to_korean(x), text)
@@ -451,5 +452,6 @@ if __name__ == "__main__":
     test_normalize("세종특별자치시 한누리대로 1843-10")
     test_normalize("제 전화번호는 010-1234-5678이에요.")
     test_normalize("13시")
-    
+    test_normalize("010-1234-5678")
+    test_normalize("1588-9898")
     #print(list(hangul_to_jamo(list(hangul_to_jamo('남은 시간이 "6개월이래요”')))))
