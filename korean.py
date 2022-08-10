@@ -35,6 +35,7 @@ id_to_char = {i: c for i, c in enumerate(ALL_SYMBOLS)}
 quote_checker = """([`"'＂“‘])(.+?)([`"'＂”’])"""
 # number_checker = "([+-]?\d[\d,]*)[\.]?\d* *"
 number_checker = "([+-]?\d[\d,]*)[\.]?\d* *"
+number_checker2 = "([+-]?\d[\d,]*[\.]?\d*) *" # 소수점 포함
 # 기수 단위의 글자를 포함하고 있어 서수임에도 기수처럼 읽는 것을 방지하기 위해
 # 오류난 exception 아님
 exception_checker = "(개월)"
@@ -43,8 +44,8 @@ cardinal_checker = "(시|명|가지|살|마리|포기|송이|수|톨|통|개|벌
 dash_checker = number_checker + "-" + number_checker
 phone_checker = "\d{3,4}-\d{4}"
 stock_checker = "증권번호\ *\[\d{8}\]"
+unit_checker = "(%|mm|cm|km|m|mg|kg|g)"
 ## -------------------------------------------------------------------------
-
 ## -------------------------------------------------------------------------
 ## DICTIONARY
 ## -------------------------------------------------------------------------
@@ -64,18 +65,17 @@ num_to_kor = {
 num_to_kor1 = [""] + list("일이삼사오육칠팔구")
 num_to_kor2 = [""] + list("만억조경해")
 num_to_kor3 = [""] + list("십백천")
-unit_to_kor1 = {
+unit_to_kor = {
         '%': "퍼센트",
         'cm': "센치미터",
         'mm': "밀리미터",
         'km': "킬로미터",
         'kg': "킬로그램",
-        'mg': "밀리그램"
-}
-unit_to_kor2 = {
+        'mg': "밀리그램",
         'm': "미터",
         'g': "그램"
 }
+
 upper_to_kor = {
         'A': '에이',
         'B': '비',
@@ -256,8 +256,7 @@ def normalize_quote(text):
 
 def normalize_number(text):
     # 단위 변환
-    text = normalize_with_dictionary(text, unit_to_kor1)
-    text = normalize_with_dictionary(text, unit_to_kor2)
+    text = re.sub(number_checker2 + unit_checker, lambda x : unit_to_korean(x), text)
 
     # 전화번호 변환
     text = re.sub(phone_checker, lambda x : phone_to_korean(x), text)
@@ -283,6 +282,16 @@ def normalize_number(text):
 
 def dash_to_korean(num_str):
     return num_str.group().replace('-',' 다시 ')
+
+def unit_to_korean(num_str):
+    num_str, unit_str = num_str.group(1), num_str.group(2)
+
+    unit_str = normalize_with_dictionary(unit_str, unit_to_kor)
+    
+    if num_str == "0" :
+        num_str = "영"
+
+    return num_str + unit_str
 
 def phone_to_korean(num_str):
     kor = ""
@@ -472,5 +481,11 @@ if __name__ == "__main__":
     test_normalize("3.375%")
 
     test_normalize("AIA Vitality")
+    test_normalize("Diamond Wealth")
+    test_normalize("0 cm")
+    test_normalize("10 cm")
+    test_normalize("00 cm")
+    test_normalize("3.3명")
+
 
     #print(list(hangul_to_jamo(list(hangul_to_jamo('남은 시간이 "6개월이래요”')))))

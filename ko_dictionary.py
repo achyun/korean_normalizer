@@ -66,6 +66,8 @@ etc_dictionary = {
 }
 
 english_dictionary = {
+        'Diamond': '다이아몬드',
+        'Wealth': '웰쓰',
         'Vitality': '바이탈리티',
         'vitality': '바이탈리티',
         'track': '트랙',
