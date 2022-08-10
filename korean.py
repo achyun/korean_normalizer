@@ -9,7 +9,7 @@ import ast
 import json
 from jamo import hangul_to_jamo, h2j, j2h
 
-from ko_dictionary import english_dictionary, etc_dictionary
+from .ko_dictionary import english_dictionary, etc_dictionary
 import pdb
 
 PAD = '_'
@@ -42,6 +42,7 @@ exception_checker = "(개월)"
 cardinal_checker = "(시|명|가지|살|마리|포기|송이|수|톨|통|개|벌|척|채|다발|그루|자루|줄|켤레|그릇|잔|마디|상자|사람|곡|병|판|자리|건)"
 dash_checker = number_checker + "-" + number_checker
 phone_checker = "\d{3,4}-\d{4}"
+stock_checker = "증권번호\ *\[\d{8}\]"
 ## -------------------------------------------------------------------------
 
 ## -------------------------------------------------------------------------
@@ -172,7 +173,7 @@ def jamo_to_korean(text):
     return new_text
 
 def compare_sentence_with_jamo(text1, text2):
-    return h2j(text1) != h2j(text)
+    return h2j(text1) != h2j(text2)
 
 def tokenize(text, as_id=False):
     # jamo package에 있는 hangul_to_jamo를 이용하여 한글 string을 초성/중성/종성으로 나눈다.
@@ -260,6 +261,8 @@ def normalize_number(text):
 
     # 전화번호 변환
     text = re.sub(phone_checker, lambda x : phone_to_korean(x), text)
+    # 증권번호 변환
+    text = re.sub(stock_checker, lambda x : stock_to_korean(x), text)
 
     # 숫자-숫자 -> 숫자 다시 숫자
     text = re.sub(dash_checker, lambda x : dash_to_korean(x), text)
@@ -287,6 +290,16 @@ def phone_to_korean(num_str):
     kor += re.sub('\d', lambda x: num_to_kor[x.group()], num_str)
 
     return kor
+
+def stock_to_korean(num_str):
+    kor = ""
+    num_str = num_str.group().replace('증권번호','')
+    num_str = num_str.replace(' ','')
+    num_str = num_str.replace('[','')
+    num_str = num_str.replace(']','')
+    kor += re.sub('\d', lambda x: num_to_kor[x.group()], num_str)
+
+    return '증권번호 ' + kor
 
 
 def number_to_korean(num_str, is_cardinal=False, is_exception=False):
@@ -454,4 +467,10 @@ if __name__ == "__main__":
     test_normalize("13시")
     test_normalize("010-1234-5678")
     test_normalize("1588-9898")
+    test_normalize("6 자리")
+    test_normalize("08월")
+    test_normalize("3.375%")
+
+    test_normalize("AIA Vitality")
+
     #print(list(hangul_to_jamo(list(hangul_to_jamo('남은 시간이 "6개월이래요”')))))
